@@ -71,7 +71,7 @@ Para instalar dependencias, ejecuta:
 
 1. Clona este repositorio:
    ```csharp
-   git clone 
+   git clone https://github.com/vorosdev/Nsniffer.git
    cd network-sniffer-tool
    ```
 2. Dale permisos de ejecucion
