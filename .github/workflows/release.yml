@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        architecture: [amd64, arm64]
+        # architecture: [amd64, arm64] 
+        architecture: [amd64] # Solo amd64 para simplificar
 
     steps:
     - name: Checkout
@@ -61,7 +62,7 @@ jobs:
         dpkg-deb --build $BUILD_DIR
         mv $BUILD_DIR.deb ./${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
 
-    - name: List files
+    - name: List files after build
       run: ls -al
 
     - name: Release
@@ -70,6 +71,5 @@ jobs:
       with:
         files: |
           nsniffer_${{ env.VERSION }}_amd64.deb
-          nsniffer_${{ env.VERSION }}_arm64.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
