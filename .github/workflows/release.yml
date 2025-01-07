@@ -22,13 +22,12 @@ jobs:
     - name: Build DEB package
       run: |
         PACKAGE_NAME="nsniffer"
-        BUILD_DIR="${PACKAGE_NAME}_pkg" # Directorio temporal para construir el paquete
-        VERSION="${{ github.ref_name }}" # Usa el tag como versión
+        BUILD_DIR="${PACKAGE_NAME}_pkg"
+        VERSION="${{ github.ref_name#v }}" 
         ARCHITECTURE="${{ matrix.architecture }}"
         INSTALL_PATH="/usr/local/bin"
         DEPENDENCIES="bash, tshark, arp-scan, dsniff"
 
-        # Asegúrate de que no exista un directorio con el mismo nombre
         if [ -e "$BUILD_DIR" ]; then
           rm -rf "$BUILD_DIR"
         fi
@@ -66,7 +65,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          nsniffer_${{ github.ref_name }}_amd64.deb
-          nsniffer_${{ github.ref_name }}_arm64.deb
+          nsniffer_${{ github.ref_name#v }}_amd64.deb
+          nsniffer_${{ github.ref_name#v }}_arm64.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
