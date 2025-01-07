@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+      - "*.*.*"
 
 jobs:
   build:
@@ -23,7 +24,7 @@ jobs:
       run: |
         PACKAGE_NAME="nsniffer"
         BUILD_DIR="${PACKAGE_NAME}_pkg"
-        VERSION="${{ github.ref_name#v }}" 
+        VERSION="${{ github.ref_name#refs/tags/v }}" 
         ARCHITECTURE="${{ matrix.architecture }}"
         INSTALL_PATH="/usr/local/bin"
         DEPENDENCIES="bash, tshark, arp-scan, dsniff"
@@ -59,13 +60,13 @@ jobs:
 
         # Generar el paquete .deb
         dpkg-deb --build $BUILD_DIR
-        mv $BUILD_DIR.deb ${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
+        mv $BUILD_DIR.deb ./${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          nsniffer_${{ github.ref_name#v }}_amd64.deb
-          nsniffer_${{ github.ref_name#v }}_arm64.deb
+          nsniffer_${{ github.ref_name#refs/tags/v }}_amd64.deb
+          nsniffer_${{ github.ref_name#refs/tags/v }}_arm64.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
