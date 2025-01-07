@@ -1,0 +1,67 @@
+name: Build and Release DEB Packages
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        architecture: [amd64, arm64] # Arquitecturas 
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up build environment
+      run: sudo apt update && sudo apt install -y build-essential devscripts dh-make
+
+    - name: Build DEB package
+      run: |
+        # Variables
+        PACKAGE_NAME="nsniffer"
+        VERSION="${{ github.event.release.tag_name }}"
+        ARCHITECTURE="${{ matrix.architecture }}"
+        INSTALL_PATH="/usr/local/bin"
+        DEPENDENCIES="bash, tshark, arp-scan, dsniff"
+
+        # Crear estructura del paquete
+        mkdir -p $PACKAGE_NAME/DEBIAN
+        mkdir -p $PACKAGE_NAME/$INSTALL_PATH
+
+        # Crear archivo de control
+        cat << EOF > $PACKAGE_NAME/DEBIAN/control
+        Package: $PACKAGE_NAME
+        Version: $VERSION
+        Architecture: $ARCHITECTURE
+        Maintainer: vorosdev@gmail.com
+        Description: Simple tool for capturing and analyzing network packets
+        Depends: $DEPENDENCIES
+        EOF
+
+        # Copiar el script principal al paquete
+        cp ./nsniffer.sh $PACKAGE_NAME/$INSTALL_PATH/nsniffer
+        chmod +x $PACKAGE_NAME/$INSTALL_PATH/nsniffer
+
+        # Crear script postinst
+        cat << 'EOF' > $PACKAGE_NAME/DEBIAN/postinst
+        #!/bin/bash
+        chmod +x /usr/local/bin/nsniffer
+        EOF
+        chmod +x $PACKAGE_NAME/DEBIAN/postinst
+
+        # Generar el paquete .deb
+        dpkg-deb --build $PACKAGE_NAME
+
+        # Renombrar el paquete con arquitectura
+        mv $PACKAGE_NAME.deb ${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
+
+    - name: Upload DEB package to GitHub Release
+      uses: actions/upload-release-asset@v2
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./nsniffer_${{ github.event.release.tag_name }}_${{ matrix.architecture }}.deb
+        asset_name: nsniffer_${{ github.event.release.tag_name }}_${{ matrix.architecture }}.deb
+        asset_content_type: application/octet-stream
