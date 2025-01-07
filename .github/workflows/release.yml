@@ -1,28 +1,28 @@
 name: Build and Release DEB Packages
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - "v*.*.*" # Activa este flujo al hacer push de un tag de versión
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        architecture: [amd64, arm64] # Arquitecturas 
+        architecture: [amd64, arm64]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Set up build environment
       run: sudo apt update && sudo apt install -y build-essential devscripts dh-make
 
     - name: Build DEB package
       run: |
-        # Variables
         PACKAGE_NAME="nsniffer"
-        VERSION="${{ github.event.release.tag_name }}"
+        VERSION="${{ github.ref_name }}" # Usa el tag como versión
         ARCHITECTURE="${{ matrix.architecture }}"
         INSTALL_PATH="/usr/local/bin"
         DEPENDENCIES="bash, tshark, arp-scan, dsniff"
@@ -54,14 +54,13 @@ jobs:
 
         # Generar el paquete .deb
         dpkg-deb --build $PACKAGE_NAME
-
-        # Renombrar el paquete con arquitectura
         mv $PACKAGE_NAME.deb ${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
 
-    - name: Upload DEB package to GitHub Release
-      uses: actions/upload-release-asset@v2
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
       with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./nsniffer_${{ github.event.release.tag_name }}_${{ matrix.architecture }}.deb
-        asset_name: nsniffer_${{ github.event.release.tag_name }}_${{ matrix.architecture }}.deb
-        asset_content_type: application/octet-stream
+        files: |
+          nsniffer_${{ github.ref_name }}_amd64.deb
+          nsniffer_${{ github.ref_name }}_arm64.deb
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
