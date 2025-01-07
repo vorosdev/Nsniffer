@@ -28,7 +28,7 @@ jobs:
       run: |
         PACKAGE_NAME="nsniffer"
         BUILD_DIR="${PACKAGE_NAME}_pkg"
-        VERSION="$VERSION" # Usa la versión extraída del paso anterior
+        VERSION="$VERSION"
         ARCHITECTURE="${{ matrix.architecture }}"
         INSTALL_PATH="/usr/local/bin"
         DEPENDENCIES="bash, tshark, arp-scan, dsniff"
@@ -37,11 +37,9 @@ jobs:
           rm -rf "$BUILD_DIR"
         fi
 
-        # Crear estructura del paquete
         mkdir -p $BUILD_DIR/DEBIAN
         mkdir -p $BUILD_DIR/$INSTALL_PATH
 
-        # Crear archivo de control
         cat << EOF > $BUILD_DIR/DEBIAN/control
         Package: $PACKAGE_NAME
         Version: $VERSION
@@ -51,23 +49,24 @@ jobs:
         Depends: $DEPENDENCIES
         EOF
 
-        # Copiar el script principal al paquete
         cp ./nsniffer $BUILD_DIR/$INSTALL_PATH/nsniffer
         chmod +x $BUILD_DIR/$INSTALL_PATH/nsniffer
 
-        # Crear script postinst
         cat << 'EOF' > $BUILD_DIR/DEBIAN/postinst
         #!/bin/bash
         chmod +x /usr/local/bin/nsniffer
         EOF
         chmod +x $BUILD_DIR/DEBIAN/postinst
 
-        # Generar el paquete .deb
         dpkg-deb --build $BUILD_DIR
         mv $BUILD_DIR.deb ./${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
 
-    - name: Create Release
+    - name: List files
+      run: ls -al
+
+    - name: Release
       uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
           nsniffer_${{ env.VERSION }}_amd64.deb
