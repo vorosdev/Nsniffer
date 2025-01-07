@@ -3,7 +3,7 @@ name: Build and Release DEB Packages
 on:
   push:
     tags:
-      - "v*.*.*" # Activa este flujo al hacer push de un tag de versión
+      - "v*.*.*"
 
 jobs:
   build:
@@ -22,17 +22,23 @@ jobs:
     - name: Build DEB package
       run: |
         PACKAGE_NAME="nsniffer"
+        BUILD_DIR="${PACKAGE_NAME}_pkg" # Directorio temporal para construir el paquete
         VERSION="${{ github.ref_name }}" # Usa el tag como versión
         ARCHITECTURE="${{ matrix.architecture }}"
         INSTALL_PATH="/usr/local/bin"
         DEPENDENCIES="bash, tshark, arp-scan, dsniff"
 
+        # Asegúrate de que no exista un directorio con el mismo nombre
+        if [ -e "$BUILD_DIR" ]; then
+          rm -rf "$BUILD_DIR"
+        fi
+
         # Crear estructura del paquete
-        mkdir -p $PACKAGE_NAME/DEBIAN
-        mkdir -p $PACKAGE_NAME/$INSTALL_PATH
+        mkdir -p $BUILD_DIR/DEBIAN
+        mkdir -p $BUILD_DIR/$INSTALL_PATH
 
         # Crear archivo de control
-        cat << EOF > $PACKAGE_NAME/DEBIAN/control
+        cat << EOF > $BUILD_DIR/DEBIAN/control
         Package: $PACKAGE_NAME
         Version: $VERSION
         Architecture: $ARCHITECTURE
@@ -42,19 +48,19 @@ jobs:
         EOF
 
         # Copiar el script principal al paquete
-        cp ./nsniffer.sh $PACKAGE_NAME/$INSTALL_PATH/nsniffer
-        chmod +x $PACKAGE_NAME/$INSTALL_PATH/nsniffer
+        cp ./nsniffer $BUILD_DIR/$INSTALL_PATH/nsniffer
+        chmod +x $BUILD_DIR/$INSTALL_PATH/nsniffer
 
         # Crear script postinst
-        cat << 'EOF' > $PACKAGE_NAME/DEBIAN/postinst
+        cat << 'EOF' > $BUILD_DIR/DEBIAN/postinst
         #!/bin/bash
         chmod +x /usr/local/bin/nsniffer
         EOF
-        chmod +x $PACKAGE_NAME/DEBIAN/postinst
+        chmod +x $BUILD_DIR/DEBIAN/postinst
 
         # Generar el paquete .deb
-        dpkg-deb --build $PACKAGE_NAME
-        mv $PACKAGE_NAME.deb ${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
+        dpkg-deb --build $BUILD_DIR
+        mv $BUILD_DIR.deb ${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
