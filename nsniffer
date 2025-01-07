@@ -12,13 +12,13 @@ setup_colors() {
   purpleColor="\e[0;35m"
   cyanColor="\e[0;36m"
   grayColor="\e[0;37m"
-  resetColor="\e[0m"
+  resetColor=" \e[0m"
 
-  plus="${greenColor}[+] ${resetColor}"
-  error="${redColor}[x] ${resetColor}"
-  warning="${yellowColor}[!] ${resetColor}"
-  question="${purpleColor}[?] ${resetColor}"
-  double_colon="${cyanColor}:: ${resetColor}"
+  plus="${greenColor}[+]${resetColor}"
+  error="${redColor}[x]${resetColor}"
+  warning="${yellowColor}[!]${resetColor}"
+  question="${purpleColor}[?]${resetColor}"
+  double_colon="${cyanColor}::${resetColor}"
 }
 
 print_with_color() {
@@ -60,15 +60,15 @@ setup_environment() {
   elif [ -f /etc/redhat-release ]; then
     yum install -y tshark dsniff arp-scan
   elif [ -f /etc/arch-release ]; then
-    pacman -Sy --noconfirm wireshark-qt dsniff 
+    pacman -Sy --noconfirm wireshark-qt dsniff arp-scan
   else
-    print_with_color "$warning" "Unsupported operating system. Please install manually: tshark, dsniff, nmap."
+    print_with_color "$warning" "Unsupported operating system. Please install manually: tshark, dsniff, arp-scan."
     exit 1
   fi
 }
 
 validate_dependencies() {
-  local dependencies=(tshark arpspoof nmap arp-scan)
+  local dependencies=(tshark arpspoof arp-scan)
   for dep in "${dependencies[@]}"; do
     if ! command -v "$dep" >/dev/null 2>&1; then
       print_with_color "$error" "Dependency $dep is not installed. Please install it and try again."
