@@ -20,11 +20,15 @@ jobs:
     - name: Set up build environment
       run: sudo apt update && sudo apt install -y build-essential devscripts dh-make
 
+    - name: Extract version
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
     - name: Build DEB package
       run: |
         PACKAGE_NAME="nsniffer"
         BUILD_DIR="${PACKAGE_NAME}_pkg"
-        VERSION="${{ github.ref_name#refs/tags/v }}" 
+        VERSION="$VERSION" # Usa la versión extraída del paso anterior
         ARCHITECTURE="${{ matrix.architecture }}"
         INSTALL_PATH="/usr/local/bin"
         DEPENDENCIES="bash, tshark, arp-scan, dsniff"
@@ -66,7 +70,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          nsniffer_${{ github.ref_name#refs/tags/v }}_amd64.deb
-          nsniffer_${{ github.ref_name#refs/tags/v }}_arm64.deb
+          nsniffer_${{ env.VERSION }}_amd64.deb
+          nsniffer_${{ env.VERSION }}_arm64.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
