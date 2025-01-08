@@ -12,8 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # architecture: [amd64, arm64] 
-        architecture: [amd64] # Solo amd64 para simplificar
+        architecture: [amd64, arm64] 
 
     steps:
     - name: Checkout
@@ -33,15 +32,20 @@ jobs:
         VERSION="$VERSION"
         ARCHITECTURE="${{ matrix.architecture }}"
         INSTALL_PATH="/usr/local/bin"
+        DOCS_PATH="/usr/share/doc/$PACKAGE_NAME"
         DEPENDENCIES="bash, tshark, arp-scan, dsniff"
 
+        # Clean up previous builds
         if [ -e "$BUILD_DIR" ]; then
           rm -rf "$BUILD_DIR"
         fi
 
+        # Create necessary directories
         mkdir -p $BUILD_DIR/DEBIAN
         mkdir -p $BUILD_DIR/$INSTALL_PATH
+        mkdir -p $BUILD_DIR/$DOCS_PATH
 
+        # Create DEBIAN/control file
         cat << EOF > $BUILD_DIR/DEBIAN/control
         Package: $PACKAGE_NAME
         Version: $VERSION
@@ -51,20 +55,23 @@ jobs:
         Depends: $DEPENDENCIES
         EOF
 
+        # Copy binary and make it executable
         cp ./nsniffer $BUILD_DIR/$INSTALL_PATH/nsniffer
         chmod +x $BUILD_DIR/$INSTALL_PATH/nsniffer
 
+        # Copy documentation files
+        cp README.md DISCLAIMER.md LICENSE $BUILD_DIR/$DOCS_PATH/
+
+        # Create DEBIAN/postinst script
         cat << 'EOF' > $BUILD_DIR/DEBIAN/postinst
         #!/bin/bash
         chmod +x /usr/local/bin/nsniffer
         EOF
         chmod +x $BUILD_DIR/DEBIAN/postinst
 
+        # Build DEB package
         dpkg-deb --build $BUILD_DIR
         mv $BUILD_DIR.deb ./${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb
-
-    - name: List files after build
-      run: ls -al
 
     - name: Release
       uses: softprops/action-gh-release@v2
@@ -72,5 +79,6 @@ jobs:
       with:
         files: |
           nsniffer_${{ env.VERSION }}_amd64.deb
+          nsniffer_${{ env.VERSION }}_arm64.deb
       env:
         GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
