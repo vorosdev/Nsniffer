@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Este script Bash es una herramienta de red multifuncional diseñada para capturar y analizar tráfico de red, 
+[Nsniffer](https://github.com/vorosdev/Nsniffer) es una herramienta de red multifuncional diseñada para capturar y analizar tráfico de red, 
 realizar ataques Man-in-the-Middle (MITM), escanear dispositivos en la red y realizar otras tareas 
 relacionadas con el análisis y seguridad de la red. Es útil para propósitos educativos y de auditoría ética.
 
