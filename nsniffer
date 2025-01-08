@@ -196,6 +196,14 @@ extract_pcap() {
 }
 
 
+check_arguments(){
+	    if [[ $# -le 2 ]]; then
+        print_with_color "\n$error" "Statement incomplete.\n"
+        print_help
+        exit 1
+        fi
+}
+
 main() {
   if [ "$(id -u)" -ne 0 ]; then
     print_with_color "$error" "This script must be run as root."
@@ -217,14 +225,17 @@ main() {
   while [[ $# -gt 0 ]]; do
     case $1 in
       -i|--interface)
+      	check_arguments "$@"
         interface=$2
         shift 2
         ;;
       -o|--output)
+      	check_arguments "$@"
         output_file=$2
         shift 2
         ;;
       -f|--filter)
+      	check_arguments "$@"
         filter=$2
         shift 2
         ;;
@@ -237,12 +248,14 @@ main() {
         shift
         ;;
       -m|--mitm)
+      	check_arguments "$@"
         target1=$2
         target2=$3
         mitm=true
         shift 3
         ;;
       -arp|--arp)
+      	check_arguments "$@"
         target1=$2
         target2=$3
         arpspoof=true
@@ -265,6 +278,7 @@ main() {
         exit 0
         ;;
       -g|--log)
+      	check_arguments "$@"
         log_file=$2
         capture_and_log "$interface" "$log_file"
         exit 0
