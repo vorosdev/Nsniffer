@@ -1,121 +1,123 @@
-# Nsniffer – Herramienta de Análisis y Seguridad de Redes
+[Versión en Español](README.md)
 
-## Descripción
+# Nsniffer – Network Analysis and Security Tool
 
-[Nsniffer](https://github.com/vorosdev/Nsniffer) es una herramienta de red multifuncional 
-diseñada para capturar y analizar tráfico de red, realizar ataques Man-in-the-Middle (MITM), 
-escanear dispositivos en la red y llevar a cabo otras tareas relacionadas con la seguridad y
-auditoría de redes. Está especialmente orientada a propósitos educativos y pruebas de 
-penetración en entornos controlados.
+## Description
 
-**Importante:** Este software está destinado a un uso ético y educativo. Asegúrate de contar 
-con los permisos necesarios antes de utilizarlo.
+[Nsniffer](https://github.com/vorosdev/Nsniffer) is a multifunctional network tool 
+designed to capture and analyze network traffic, perform Man-in-the-Middle (MITM) attacks, 
+scan devices on the network, and carry out other tasks related to network security and 
+auditing. It is particularly aimed at educational purposes and penetration testing in 
+controlled environments.
 
----
-
-## Características
-
-- **Captura de tráfico en tiempo real** utilizando TShark.
-- **Guardado de capturas** en formato `.pcap` o `.pcapng`.
-- **Extracción de datos en formato hexadecimal** y conversión a texto legible.
-- **Ataques de spoofing ARP** y **Man-in-the-Middle**.
-- **Escaneo de dispositivos en la red local**.
-- **Análisis de archivos de captura**.
-- **Listado de interfaces de red** disponibles.
-- **Modo de captura en intervalos y registro** de la data en log.
-- **Instalación automatizada** de dependencias (en sistemas soportados).
+**Important:** This software is intended for ethical and educational use. Make sure you have 
+the necessary permissions before using it.
 
 ---
 
-## Uso General
+## Features
 
-En esta actualizacion `nsniffer` utiliza **subcomandos** en lugar de un único comando con múltiples flags.  
-La forma general de uso es:
+- **Real-time traffic capture** using TShark.
+- **Saving captures** in `.pcap` or `.pcapng` format.
+- **Extraction of data in hexadecimal format** and conversion to readable text.
+- **ARP spoofing attacks** and **Man-in-the-Middle** capabilities.
+- **Scanning of devices** on the local network.
+- **Analysis of capture files**.
+- **Listing available network interfaces**.
+- **Interval-based capture and logging** of extracted data.
+- **Automated dependency installation** (on supported systems).
+
+---
+
+## General Usage
+
+In this update, `nsniffer` uses **subcommands** instead of a single command with multiple flags.  
+The general usage is:
 
 ```bash
-nsniffer <subcommand> [opciones]
+nsniffer <subcommand> [options]
 ```
 
-Donde `<subcommand>` puede ser uno de los siguientes:
+Where `<subcommand>` can be one of the following:
 
-- **capture**: Captura tráfico con TShark.  
-- **analyze**: Analiza un archivo `.pcap`.  
-- **mitm**: Realiza un ataque MITM entre dos objetivos.  
-- **arp**: Lleva a cabo ARP spoofing simple entre un objetivo y una víctima.  
-- **scan**: Escanea dispositivos en la red local.  
-- **list**: Lista las interfaces de red disponibles.  
-- **extract**: Extrae datos hexadecimales y los convierte en texto legible desde un pcap.  
-- **log**: Captura tráfico en intervalos definidos y guarda la extracción en un archivo de log.  
-- **setup**: Instala o verifica las dependencias necesarias.  
-- **help**: Muestra la ayuda de la herramienta.
+- **capture**: Capture traffic with TShark.  
+- **analyze**: Analyze a `.pcap` file.  
+- **mitm**: Perform a MITM attack between two targets.  
+- **arp**: Carry out simple ARP spoofing between a target and a victim.  
+- **scan**: Scan devices on the local network.  
+- **list**: List available network interfaces.  
+- **extract**: Extract hexadecimal data and convert it into readable text from a pcap file.  
+- **log**: Capture traffic at defined intervals and save the extracted data into a log file.  
+- **setup**: Install or verify necessary dependencies.  
+- **help**: Show the tool’s help information.
 
-Para ver la descripción y opciones de cada subcomando, puedes ejecutar:
+To see a description and available options for each subcommand, you can run:
 ```bash
 nsniffer help
 ```
 
 ---
 
-## Requisitos
+## Requirements
 
-- Sistema operativo **Linux**.
-- Privilegios de **superusuario (root)** para poder realizar la mayoría de las acciones de sniffing y spoofing.
-- Dependencias necesarias:
+- **Linux** operating system.
+- **Superuser (root)** privileges to perform most sniffing and spoofing operations.
+- Necessary dependencies:
   - **TShark**
-  - **arpspoof** (incluido en la suite **dsniff**)
+  - **arpspoof** (included in the **dsniff** suite)
   - **arp-scan**
 
-Para instalar o verificar dependencias en distribuciones soportadas (Debian, RedHat, Arch), puedes ejecutar:
+To install or verify dependencies on supported distributions (Debian, RedHat, Arch), run:
 ```bash
 nsniffer setup
 ```
-Esto intentará instalar cualquier dependencia faltante.
+This will attempt to install any missing dependencies.
 
 ---
 
-## Instalación
+## Installation
 
-1. **Clona este repositorio**:
+1. **Clone this repository**:
    ```bash
    git clone https://github.com/vorosdev/Nsniffer.git
    cd Nsniffer
    ```
-2. **Dale permisos de ejecución**:
+2. **Grant execution permissions**:
    ```bash
    chmod +x nsniffer
    ```
-3. **(Opcional) Añádelo a tu PATH** para poder usarlo desde cualquier ubicación:
+3. **(Optional) Add it to your PATH** so you can use it from anywhere:
    ```bash
    sudo cp nsniffer /usr/local/bin/nsniffer
    ```
 
 ---
 
-## Subcomandos Principales y Ejemplos
+## Main Subcommands and Examples
 
-### 1. Captura de tráfico (capture)
+### 1. Traffic Capture (capture)
 
 ```bash
-nsniffer capture -i <interfaz> [-o <archivo.pcap>] [-f <filtro>] [--live]
+nsniffer capture -i <interface> [-o <file.pcap>] [-f <filter>] [--live]
 ```
-- **-i, --interface**: Interfaz de red, por ejemplo `eth0`.
-- **-o, --output**: Archivo de salida. Por defecto, `output.pcap`.
-- **-f, --filter**: Filtro TShark (p.ej. `"host 172.10.23.111 and port 2222 and tcp"`).
-- **--live**: Muestra los paquetes capturados en tiempo real (`-x` en TShark).
+- **-i, --interface**: Network interface, e.g., `eth0`.
+- **-o, --output**: Output file. Defaults to `output.pcap`.
+- **-f, --filter**: TShark filter (e.g., `"host 172.10.23.111 and port 2222 and tcp"`).
+- **--live**: Displays captured packets in real-time (`-x` in TShark).
 
-**Ejemplo**:
+**Example**:
 ```bash
 nsniffer capture -i eth0 -o capture.pcap -f "port 443 and tcp" --live
 ```
 
-### 2. Análisis de un archivo pcap (analyze)
+### 2. Analyze a pcap File (analyze)
 
 ```bash
-nsniffer analyze <archivo.pcap>
+nsniffer analyze <file.pcap>
 ```
-Muestra un análisis de texto del archivo especificado.
+Outputs a textual analysis of the specified file.
 
-**Ejemplo**:
+**Example**:
 ```bash
 nsniffer analyze capture.pcap
 ```
@@ -123,126 +125,126 @@ nsniffer analyze capture.pcap
 ### 3. Man-in-the-Middle (mitm)
 
 ```bash
-nsniffer mitm <interfaz> <IP_objetivo1> <IP_objetivo2>
+nsniffer mitm <interface> <target_IP1> <target_IP2>
 ```
-Habilita IP forwarding y ejecuta `arpspoof` para ambas direcciones.
+Enables IP forwarding and runs `arpspoof` for both addresses.
 
-**Ejemplo**:
+**Example**:
 ```bash
 nsniffer mitm eth0 192.168.0.10 192.168.0.20
 ```
 
-### 4. ARP Spoofing simple (arp)
+### 4. Simple ARP Spoofing (arp)
 
 ```bash
-nsniffer arp <interfaz> <IP_objetivo> <IP_victima>
+nsniffer arp <interface> <target_IP> <victim_IP>
 ```
-Inicia `arpspoof` de un objetivo a una víctima específica, sin MITM completo.
+Starts `arpspoof` from one target to a specific victim, without full MITM.
 
-**Ejemplo**:
+**Example**:
 ```bash
 nsniffer arp eth0 192.168.0.1 192.168.0.50
 ```
 
-### 5. Escaneo de red (scan)
+### 5. Network Scan (scan)
 
 ```bash
-nsniffer scan <interfaz>
+nsniffer scan <interface>
 ```
-Realiza un escaneo ARP con `arp-scan`.
+Performs an ARP scan using `arp-scan`.
 
-**Ejemplo**:
+**Example**:
 ```bash
 nsniffer scan eth0
 ```
 
-### 6. Listar interfaces (list)
+### 6. List Interfaces (list)
 
 ```bash
 nsniffer list
 ```
-Muestra las interfaces de red disponibles en el sistema.
+Displays the network interfaces available on the system.
 
-### 7. Extracción de datos hexadecimales (extract)
+### 7. Hexadecimal Data Extraction (extract)
 
 ```bash
-nsniffer extract <archivo.pcap>
+nsniffer extract <file.pcap>
 ```
-Busca tramas con longitud mayor a 100 bytes y convierte datos hexadecimales a texto legible.
+Looks for frames larger than 100 bytes and converts hexadecimal data to readable text.
 
-**Ejemplo**:
+**Example**:
 ```bash
 nsniffer extract capture.pcap
 ```
 
-### 8. Captura en intervalos y registro (log)
+### 8. Interval-Based Capture and Logging (log)
 
 ```bash
-nsniffer log <interfaz> <archivo_log> [intervalo_segundos=5]
+nsniffer log <interface> <log_file> [interval_in_seconds=5]
 ```
-Inicia un bucle de capturas: cada cierto intervalo (por defecto, 5s) detiene la captura, extrae datos hex y los escribe en el `archivo_log`.
+Starts a capture loop: every specified interval (5s by default), it stops the capture, extracts hex data, and writes it to `log_file`.
 
-**Ejemplo**:
+**Example**:
 ```bash
 nsniffer log eth0 mycapture.log 10
 ```
-Cada 10 segundos se detiene la captura temporal, se extraen datos y se guardan en `mycapture.log`, luego se reinicia.
+Every 10 seconds, it temporarily stops the capture, extracts data, and saves it to `mycapture.log`, then restarts.
 
-### 9. Configuración (setup)
+### 9. Setup (setup)
 
 ```bash
 nsniffer setup
 ```
-Verifica e instala dependencias requeridas (TShark, arpspoof, arp-scan) si el sistema operativo es soportado.
+Checks and installs required dependencies (TShark, arpspoof, arp-scan) if the operating system is supported.
 
-### 10. Ayuda (help)
+### 10. Help (help)
 
 ```bash
 nsniffer help
 ```
-Muestra la descripción general de todos los subcomandos y su uso.
+Displays a general description of all subcommands and their usage.
 
 ---
 
-## Ejemplos Adicionales
+## Additional Examples
 
-#### Escanear la red local
+#### Scan the Local Network
 
 ```bash
 nsniffer scan eth0
 ```
-Encuentra hosts activos en la subred asignada a `eth0` usando `arp-scan`.
+Finds active hosts in the subnet assigned to `eth0` using `arp-scan`.
 
-#### Realizar un MITM
+#### Perform a MITM Attack
 
 ```bash
 nsniffer mitm eth0 192.168.1.10 192.168.1.20
 ```
-Ataca la comunicación entre la IP 192.168.1.10 y 192.168.1.20 a través de la interfaz `eth0`.
+Attacks the communication between IP 192.168.1.10 and 192.168.1.20 via the `eth0` interface.
 
-#### Captura y conversión de datos en modo "log"
+#### Capture and Convert Data in "log" Mode
 
 ```bash
 nsniffer log eth0 capture.log
 ```
-Cada 5 segundos (por defecto), detiene la captura, extrae datos hexadecimales y los agrega a `capture.log`.  
-Presiona **Enter** para reiniciar el ciclo o **Ctrl+C** para salir.
+Every 5 seconds (by default), it stops the capture, extracts hexadecimal data, and appends it to `capture.log`.  
+Press **Enter** to restart the cycle or **Ctrl+C** to exit.
 
 ---
 
-> **Advertencia**  
-> - Utiliza este software **únicamente** en redes bajo tu control o con autorización explícita.  
-> - El uso malintencionado de esta herramienta puede ser **ilegal** y derivar en sanciones graves.
+> **Warning**  
+> - Use this software **only** on networks under your control or with explicit authorization.  
+> - Malicious use of this tool can be **illegal** and may lead to serious consequences.
 
 ---
 
-## Licencia
+## License
 
-Este proyecto está bajo la licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más información.
+This project is licensed under the **MIT** license. See the [LICENSE](LICENSE) file for more information.
 
 ---
 
 ## Disclaimer
 
-Este proyecto está destinado únicamente a fines educativos y éticos. El autor no se hace responsable del 
-uso indebido de esta herramienta. Para más información, consulta el archivo [DISCLAIMER.md](DISCLAIMER.md).
+This project is intended for educational and ethical purposes only. The author is not responsible for 
+any misuse of this tool. For more information, see the [DISCLAIMER.md](DISCLAIMER.md) file.
