@@ -1,4 +1,4 @@
-[Versión en Español](README.md)
+[Versión en Español](README_es.md)
 
 # Nsniffer – Network Analysis and Security Tool
 
