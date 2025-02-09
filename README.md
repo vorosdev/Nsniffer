@@ -230,13 +230,12 @@ nsniffer log eth0 capture.log
 Every 5 seconds (by default), it stops the capture, extracts hexadecimal data, and appends it to `capture.log`.  
 Press **Enter** to restart the cycle or **Ctrl+C** to exit.
 
----
 
-> **Warning**  
+>  [!WARNING]
 > - Use this software **only** on networks under your control or with explicit authorization.  
 > - Malicious use of this tool can be **illegal** and may lead to serious consequences.
 
----
+
 
 ## License
 
