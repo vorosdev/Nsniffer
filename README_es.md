@@ -1,4 +1,4 @@
-[English version](README_en.md)
+[English version](README.md)
 
 # Nsniffer – Herramienta de Análisis y Seguridad de Redes
 
