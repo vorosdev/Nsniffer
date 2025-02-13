@@ -232,7 +232,7 @@ Presiona **Enter** para reiniciar el ciclo o **Ctrl+C** para salir.
 
 ---
 
-> **Advertencia**  
+>  [!WARNING]
 > - Utiliza este software **únicamente** en redes bajo tu control o con autorización explícita.  
 > - El uso malintencionado de esta herramienta puede ser **ilegal** y derivar en sanciones graves.
 
